@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Net;
 using System.Net.Sockets;
+using System.IO;
 
 namespace TFTP
 {
@@ -16,6 +17,7 @@ namespace TFTP
         // Connection session variables
         private IPEndPoint tftphost;
         private Socket sconnection;
+        private EndPoint reccon;
 
 
         /// <summary>
@@ -62,6 +64,9 @@ namespace TFTP
             // Create a new socket and connect to the server
             this.sconnection = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
             
+            // Open the local file for writing
+            FileStream lfile = File.Open(localfilename, FileMode.Create);
+
             // Craft a request packet and send it
             byte[] packet = this.GenerateRequestReadPacket(hostfilename, mode);
             this.sconnection.SendTo(packet, this.tftphost);
@@ -70,9 +75,11 @@ namespace TFTP
             while (true)
             {
                 // Listen for the response packet
-                packet = new byte[1000];
-                EndPoint reccon = (EndPoint)this.tftphost;
-                int psize = this.sconnection.ReceiveFrom(packet, ref reccon);
+                byte[] raw = new byte[1000];
+                this.reccon = (EndPoint)this.tftphost;
+                int psize = this.sconnection.ReceiveFrom(raw, ref reccon);
+                packet = new byte[psize];
+                Array.Copy(raw, 0, packet, 0, psize);
                 
                 // Read the packet type
                 byte[] rtype = new byte[2];
@@ -85,6 +92,10 @@ namespace TFTP
                 if(BitConverter.ToInt16(rtype, 0) == 3)
                 {
                     /* This is a DATA packet */
+                    int response = this.SaveDataPacket(packet, lfile, mode);
+
+                    // If response is -1, transmission is done. Brake loop
+                    if (response == -1) { break; }
                 }
                 else if(BitConverter.ToInt16(rtype, 0) == 5)
                 {
@@ -93,9 +104,14 @@ namespace TFTP
                 else
                 {
                     /* Unknown bad packet, error out */
+                    throw new Exception("Fatal Error: Packet with unknown type " + BitConverter.ToInt16(rtype, 0).ToString() + " recieved.");
                 }
             }
 
+            // Finished recieving packets. Close socket, close file and return success
+            lfile.Flush();
+            lfile.Close();
+            this.sconnection.Close();
             return true;
         }
 
@@ -151,6 +167,57 @@ namespace TFTP
             // Add the final null and return the packet for transmission
             packet[pos] = (byte)0;
             return packet;
+        }
+
+        /// <summary>
+        /// Takes the recieved data packet and writes it to the local file. Then sends the proper ack packet.
+        /// </summary>
+        /// <param name="dpacket">The recieved packet</param>
+        /// <param name="lfile">The file stream for writing</param>
+        /// <param name="mode">Binary or ASCII file, changes how file write is handled</param>
+        /// <returns>Block number or -1 for end of transmission</returns>
+        private int SaveDataPacket(byte[] dpacket, FileStream lfile, TransferMode mode)
+        {
+            // We already know it is a data packet, so skip the opcode field and grab the
+            // block number
+            byte[] bnum = new byte[2];
+            Array.Copy(dpacket, 2, bnum, 0, 2);
+
+            // Convert this to an int, deal with endianess issue
+            if (BitConverter.IsLittleEndian) { Array.Reverse(bnum); }
+            int block = BitConverter.ToInt16(bnum, 0);
+
+            // If the program is in ascii mode, zero out the lf+cr in the last two bytes
+            if (mode == TransferMode.netascii)
+            {
+                dpacket[dpacket.Length - 1] = (byte)0;
+                dpacket[dpacket.Length - 2] = (byte)0;
+            }
+
+            // Write the bytes to the file
+            lfile.Write(dpacket, 4, (dpacket.Length - 4));
+
+            // Make a 4 byte response packet with the first two bites being 0 and 5
+            byte[] ack = new byte[4];
+            ack[0] = (byte)0;
+            ack[1] = (byte)4;
+
+            // Flip the block number back and append
+            if (BitConverter.IsLittleEndian) { Array.Reverse(bnum); }
+            Array.Copy(bnum, 0, ack, 2, 2);
+
+            // Send the ack packet
+            this.sconnection.SendTo(ack, this.reccon);
+
+            // Check to see if array size if 516, the max 512 payload plus the 4 code bytes. If
+            // the packet is shorter then this, it is the last one
+            if(dpacket.Length < 516)
+            {
+                block = -1;
+            }
+
+            // Return the block code
+            return block;
         }
     }
 
