@@ -31,6 +31,9 @@ namespace TFTP
 
 				// Check the file name.
 				file = args[2];
+
+                TFTProtocol t = new TFTProtocol(server, 69);
+                t.GetFileFromServer(file, "test.txt", TransferMode.octet);
 			}
 			else
 			{
