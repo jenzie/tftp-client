@@ -15,18 +15,18 @@ using System.Threading.Tasks;
 
 namespace TFTP
 {
-	/**
-	 * RFC1350 compliant TFTP client. 
-	 */
+	/// <summary>
+	/// RFC1350 compliant TFTP client. 
+	/// </summary>
 	class TFTPreader
 	{
 		public const string NETASCII = "netascii";
 		public const string OCTET = "octet";
 
-		/**
-		 * Main parses the command line arguments, and starts a new TFTP 
-		 * session to download a file.
-		 */
+		/// <summary>
+		/// Main parses the command line arguments, and starts a new TFTP 
+		/// session to download a file.
+		/// </summary>
 		static void Main(string[] args)
 		{
             TransferMode transferMode = TransferMode.octet;
