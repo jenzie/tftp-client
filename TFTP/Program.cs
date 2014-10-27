@@ -1,4 +1,13 @@
-﻿using System;
+﻿/*
+ * TFTP Client
+ * author Jenny Zhen
+ * date: 10.27.14
+ * language: C#
+ * file: Program.cs
+ * assignment: TFTP
+ */
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,56 +15,57 @@ using System.Threading.Tasks;
 
 namespace TFTP
 {
+	/**
+	 * RFC1350 compliant TFTP client. 
+	 */
 	class TFTPreader
 	{
 		public const string NETASCII = "netascii";
 		public const string OCTET = "octet";
 
+		/**
+		 * Main parses the command line arguments, and starts a new TFTP 
+		 * session to download a file.
+		 */
 		static void Main(string[] args)
 		{
-            TransferMode t = TransferMode.octet;
-			bool netascii = false;
+            TransferMode transferMode = TransferMode.octet;
 			string server = null, file = null;
 
 			if (args.Length == 3)
 			{
-				// Check the file transfer mode, netascii or octet.
+				// Check the file transfer mode; netascii or octet.
 				if (args[0].Trim().ToLower().Equals(NETASCII))
-                {
-					netascii = true;
-                    t = TransferMode.netascii;
-				} else if (args[0].Trim().ToLower().Equals(OCTET))
-                {
-					netascii = false;
-                    t = TransferMode.octet;
-                } else {
-					Console.Error.WriteLine("Usage: [mono] TFTPreader [netascii | octet] tftp-host file");
-                }
+                    transferMode = TransferMode.netascii;
+				else if (args[0].Trim().ToLower().Equals(OCTET))
+                    transferMode = TransferMode.octet;
+				else
+					Console.Error.WriteLine(
+						"Usage: [mono] TFTPreader [netascii | octet] "
+						+ "tftp-host file");
 
-				// Try to connect to the given host/server.
+				// Save the arguments.
 				server = args[1];
-
-				// Check the file name.
 				file = args[2];
 
-                // Get transfer mode
-
-                // Try to execute the operation
+                // Try to execute the operation.
                 try
                 {
                     TFTProtocol session = new TFTProtocol(server, 69);
-                    session.GetFileFromServer(file, file, t);
+                    session.GetFileFromServer(file, file, transferMode);
                 }
                 catch(Exception e)
                 {
-                    // Print exception message and exit
+                    // Print exception message and exit.
                     Console.WriteLine(e.Message);
                     return;
                 }
 			}
 			else
 			{
-				Console.Error.WriteLine("Usage: [mono] TFTPreader [netascii | octet] tftp-host file");
+				Console.Error.WriteLine(
+					"Usage: [mono] TFTPreader [netascii | octet] "
+					+ "tftp-host file");
 			}
 		}
 	}
