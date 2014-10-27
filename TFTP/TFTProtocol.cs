@@ -100,10 +100,20 @@ namespace TFTP
                 else if(BitConverter.ToInt16(rtype, 0) == 5)
                 {
                     /* Error packet */
+                    // Close and delete the file and connection. Send the error code to the error
+                    // handler.
+                    lfile.Close();
+                    File.Delete(localfilename);
+                    this.sconnection.Close();
+
+                    this.HandleError(packet);
                 }
                 else
                 {
                     /* Unknown bad packet, error out */
+                    lfile.Close();
+                    File.Delete(localfilename);
+                    this.sconnection.Close();
                     throw new Exception("Fatal Error: Packet with unknown type " + BitConverter.ToInt16(rtype, 0).ToString() + " recieved.");
                 }
             }
@@ -218,6 +228,26 @@ namespace TFTP
 
             // Return the block code
             return block;
+        }
+
+        /// <summary>
+        /// Formats error message and throws exception for main program body to catch.
+        /// </summary>
+        /// <param name="dpacket">The error packet</param>
+        private void HandleError(byte[] dpacket)
+        {
+            // Grab the error number from the second two bytes. Deal with
+            // endianess issue.
+            byte[] ernum = new byte[2];
+            Array.Copy(dpacket, 2, ernum, 0, 2);
+            if (BitConverter.IsLittleEndian) { Array.Reverse(ernum); }
+            int errcode = BitConverter.ToInt16(ernum, 0);
+
+            // Copy the rest of the error to a string
+            string errormsg = Encoding.ASCII.GetString(dpacket, 4, (dpacket.Length - 4));
+
+            // Throw the exception
+            throw new Exception("TFTPReader: Error Code " + errcode.ToString() + ": " + errormsg);
         }
     }
 

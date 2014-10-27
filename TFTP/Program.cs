@@ -13,6 +13,7 @@ namespace TFTP
 
 		static void Main(string[] args)
 		{
+            TransferMode t = TransferMode.octet;
 			bool netascii = false;
 			string server = null, file = null;
 
@@ -20,11 +21,16 @@ namespace TFTP
 			{
 				// Check the file transfer mode, netascii or octet.
 				if (args[0].Trim().ToLower().Equals(NETASCII))
+                {
 					netascii = true;
-				else if (args[0].Trim().ToLower().Equals(OCTET))
+                    t = TransferMode.netascii;
+				} else if (args[0].Trim().ToLower().Equals(OCTET))
+                {
 					netascii = false;
-				else
+                    t = TransferMode.octet;
+                } else {
 					Console.Error.WriteLine("Usage: [mono] TFTPreader [netascii | octet] tftp-host file");
+                }
 
 				// Try to connect to the given host/server.
 				server = args[1];
@@ -32,8 +38,20 @@ namespace TFTP
 				// Check the file name.
 				file = args[2];
 
-                TFTProtocol t = new TFTProtocol(server, 69);
-                t.GetFileFromServer(file, "test.txt", TransferMode.octet);
+                // Get transfer mode
+
+                // Try to execute the operation
+                try
+                {
+                    TFTProtocol session = new TFTProtocol(server, 69);
+                    session.GetFileFromServer(file, file, t);
+                }
+                catch(Exception e)
+                {
+                    // Print exception message and exit
+                    Console.WriteLine(e.Message);
+                    return;
+                }
 			}
 			else
 			{
