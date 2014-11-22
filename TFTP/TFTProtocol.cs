@@ -51,7 +51,7 @@ namespace TFTP
 						" is not a valid hostname or IP address.");
                 }
 
-                // Lookup was successful, use first address.
+                // Lookup was successful. Use first address.
                 ipCheck = lookup[0];
             }
 
